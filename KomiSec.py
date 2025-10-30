@@ -56,7 +56,7 @@ async def try_ban_member(member: discord.Member, detected_role: discord.Role):
         await send_log(guild, f"Cannot ban {member} ({member.id}) because their top role >= bot's top role.")
         return False
     try:
-        await guild.ban(member, reason=f"Auto-ban: had forbidden role {detected_role.name} ({detected_role.id})")
+        await guild.ban(member, reason=f"Auto-ban: Minor detected, exterminated with extreme prejudice {detected_role.name} ({detected_role.id})")
         msg = CUSTOM_MESSAGE.format(user=member.mention, user_id=member.id, guild=guild.name, role=detected_role.name)
         await send_log(guild, msg)
         print(f"Banned {member} ({member.id}) for role {detected_role.name} in {guild.name}")
