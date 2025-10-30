@@ -22,7 +22,7 @@ LOG_CHANNEL_ID = 1399460846379466782  # replace with your channel ID
 CUSTOM_MESSAGE = "Banned {user} (ID: {user_id}) had role {role}"
 
 # Safety: start in dry-run mode so it does not actually ban until you set False
-DRY_RUN = True
+DRY_RUN = False
 # ------------------------------------------------------------
 
 intents = discord.Intents.default()
