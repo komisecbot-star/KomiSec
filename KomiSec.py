@@ -6,12 +6,23 @@ from discord.ext import commands
 from flask import Flask
 
 # ========== CONFIG ==========
-TOKEN = os.getenv("BOT_TOKEN")  # your bot token (set in Render)
+TOKEN = os.getenv("BOT_TOKEN")  # Your bot token (set in Render)
 
 # 🔥 Roles that SHOULD BE BANNED
 BAN_ROLE_IDS = [1430761119689211934, 1430761012138872973]
 
-DRY_RUN = False  # set True for testing without banning
+# 🛡️ Roles that must NEVER be banned (protected)
+PROTECTED_ROLE_IDS = [
+    1430761205844410398,
+    1430761300757319802,
+    1430761376950911121,
+    1430761459276578927,
+    1430761543578030123,
+    1430761624125313124,
+    1430761706597912596,
+]
+
+DRY_RUN = False  # Set True for testing without banning
 PORT = int(os.getenv("PORT", 10000))
 # ============================
 
@@ -38,32 +49,37 @@ def run_flask():
 
 # ====== MAIN DISCORD LOGIC ======
 async def check_and_ban_member(member: discord.Member):
-    """Check a single member and ban if they have a forbidden role."""
+    """Check a single member and ban if they have a banned role (and not protected)."""
     # Skip bots
     if member.bot:
         return
 
-    # Skip if role hierarchy prevents it
+    # 🛡️ Skip if member has a protected role
+    if any(role.id in PROTECTED_ROLE_IDS for role in member.roles):
+        print(f"⏭️ Skipping {member} — has protected role.")
+        return
+
+    # ✅ Only continue if member has a banned role
+    if not any(role.id in BAN_ROLE_IDS for role in member.roles):
+        return  # Clean, ignore silently
+
+    # 🚫 Check hierarchy (bot must be above target)
     if member.top_role >= member.guild.me.top_role:
         print(f"🚫 Cannot ban {member} — higher or equal role to bot.")
         return
 
-    # Check if the member has any banned role
-    if any(role.id in BAN_ROLE_IDS for role in member.roles):
-        try:
-            if not DRY_RUN:
-                await member.ban(reason="Auto-ban: Minor detected, exterminated with extreme prejudice")
-                print(f"✅ Banned {member}")
-            else:
-                print(f"[DRY RUN] Would ban {member}")
-            await asyncio.sleep(1.5)  # avoid rate limits
-        except discord.Forbidden:
-            print(f"⚠️ Missing permissions to ban {member}")
-        except discord.HTTPException as e:
-            print(f"❌ HTTP error while banning {member}: {e}")
-    else:
-        # No banned roles, safe
-        return
+    # 🔨 Attempt to ban
+    try:
+        if not DRY_RUN:
+            await member.ban(reason="Auto-ban: Minor detected, exterminated with extreme prejudice")
+            print(f"✅ Banned {member}")
+        else:
+            print(f"[DRY RUN] Would ban {member}")
+        await asyncio.sleep(1.5)  # avoid rate limits
+    except discord.Forbidden:
+        print(f"⚠️ Missing permissions to ban {member}")
+    except discord.HTTPException as e:
+        print(f"❌ HTTP error while banning {member}: {e}")
 
 
 @bot.event
@@ -87,7 +103,7 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
-    """Check and ban users automatically when they join."""
+    """Automatically checks and bans members when they join."""
     print(f"👋 {member} joined {member.guild.name}, checking roles...")
     await asyncio.sleep(2)  # short delay to let roles apply
     await check_and_ban_member(member)
